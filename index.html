@@ -564,6 +564,8 @@ $('tabRaw').addEventListener('click', () => switchTab('raw'));
 $('tabAI').addEventListener('click', () => switchTab('ai'));
 
 function switchTab(tab) {
+  if (currentTab === 'raw') rawText = $('mainText').value;
+  if (currentTab === 'ai') aiText = $('mainText').value;
   currentTab = tab;
   $('tabRaw').classList.toggle('active', tab === 'raw');
   $('tabAI').classList.toggle('active', tab === 'ai');
@@ -584,17 +586,18 @@ $('aiGrid').addEventListener('click', (e) => {
 });
 
 async function runAI() {
+  rawText = currentTab === 'raw' ? $('mainText').value : rawText;
   const text = rawText.trim();
   if (!text) { showToast('先に録音してください'); return; }
 
   const prompts = {
-    clean: `以下の音声文字起こしを、句読点を補い読みやすく整えてください。意味は変えず、自然な日本語にしてください。\n\n${text}`,
+    clean: `以下の音声文字起こしテキストを、句読点（、。）・改行を適切に補い、読みやすく自然な日本語に整えてください。話し言葉のままで構いませんが、文の区切りをはっきりさせてください。意味は変えないでください。\n\n${text}`,
     summary: `以下の音声文字起こしを3〜5文で簡潔に要約してください。\n\n${text}`,
     bullet: `以下の音声文字起こしの要点を箇条書きで整理してください。\n\n${text}`,
     mail: `以下の音声メモを元に、自然なビジネスメール（件名と本文）を作成してください。\n\n${text}`,
     minutes: `以下の音声文字起こしを議事録形式（日時・参加者・議題・決定事項・TODO）で整理してください。不明な項目は「要確認」としてください。\n\n${text}`,
-    formal: `以下の文章を丁寧な敬語・ビジネス文体に書き直してください。\n\n${text}`,
-    casual: `以下の文章をカジュアルで親しみやすい文体に書き直してください。\n\n${text}`,
+    formal: `以下の文章を丁寧な敬語・ビジネス文体に書き直してください。句読点も適切に補ってください。\n\n${text}`,
+    casual: `以下の文章をカジュアルで親しみやすい文体に書き直してください。句読点も適切に補ってください。\n\n${text}`,
     todo: `以下の音声文字起こしからTODO・やるべきことを抽出し、優先度付きのリストにしてください。\n\n${text}`,
   };
 
