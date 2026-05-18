@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="音声メモ">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>音声メモ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #faf9f6;
+  --bg-card: #ffffff;
+  --bg-elevated: #f2f0eb;
+  --bg-accent: #e8e5de;
+  --text: #1a1a1a;
+  --text-secondary: #6b6560;
+  --text-tertiary: #a09a93;
+  --accent: #c54b2a;
+  --accent-soft: #f4e8e3;
+  --accent-glow: rgba(197,75,42,0.15);
+  --border: rgba(0,0,0,0.06);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --safe-top: env(safe-area-inset-top, 20px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0a0a0a;
+    --bg-card: #161616;
+    --bg-elevated: #1e1e1e;
+    --bg-accent: #2a2a2a;
+    --text: #f0ede8;
+    --text-secondary: #9a958e;
+    --text-tertiary: #5e5a55;
+    --accent: #e06844;
+    --accent-soft: #2a1c16;
+    --accent-glow: rgba(224,104,68,0.15);
+    --border: rgba(255,255,255,0.06);
+  }
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  font-family: 'Noto Sans JP', -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overscroll-behavior: none;
+}
+
+.app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+}
+
+header {
+  padding: 12px 20px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+header h1 {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.lang-pill {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 16px 16px;
+}
+
+.rec-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 28px 0 20px;
+}
+
+.waveform {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 40px;
+  margin-bottom: 20px;
+}
+.wave-bar {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--bg-accent);
+  transition: height 0.08s ease, background 0.2s;
+}
+.wave-bar.active { background: var(--accent); }
+
+.mic-btn {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg-card);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px var(--border);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  position: relative;
+}
+.mic-btn:active { transform: scale(0.94); }
+.mic-btn.recording {
+  background: var(--accent);
+  box-shadow: 0 0 0 6px var(--accent-glow), 0 2px 8px rgba(197,75,42,0.3);
+  animation: mic-pulse 1.5s ease infinite;
+}
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 6px var(--accent-glow), 0 2px 8px rgba(197,75,42,0.3); }
+  50% { box-shadow: 0 0 0 14px transparent, 0 2px 8px rgba(197,75,42,0.2); }
+}
+.mic-icon { width: 28px; height: 28px; }
+.mic-btn .mic-icon path, .mic-btn .mic-icon rect { fill: var(--text); transition: fill 0.2s; }
+.mic-btn.recording .mic-icon path, .mic-btn.recording .mic-icon rect { fill: #fff; }
+
+.rec-label {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.01em;
+}
+.rec-label.active { color: var(--accent); font-weight: 500; }
+.timer {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  margin-top: 4px;
+}
+
+.tabs {
+  display: flex;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  margin: 4px 0 12px;
+  flex-shrink: 0;
+}
+.tab {
+  flex: 1;
+  padding: 8px 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.tab.active {
+  background: var(--bg-card);
+  color: var(--text);
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.text-card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.text-card textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: 14px 16px;
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  font-family: 'Noto Sans JP', sans-serif;
+  color: var(--text);
+  line-height: 1.8;
+  resize: none;
+  outline: none;
+}
+.text-card textarea::placeholder { color: var(--text-tertiary); }
+.text-meta {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 14px 10px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.ai-panel {
+  background: var(--bg-elevated);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  display: none;
+}
+.ai-panel.visible { display: block; }
+.ai-panel label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  display: block;
+  margin-bottom: 10px;
+}
+.ai-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.ai-chip {
+  padding: 10px 12px;
+  font-size: 12px;
+  font-family: 'Noto Sans JP', sans-serif;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+.ai-chip:active { transform: scale(0.97); }
+.ai-chip.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.loading-bar {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+}
+.loading-bar.visible { display: flex; }
+.loading-spinner {
+  width: 16px; height: 16px;
+  border: 2px solid var(--accent-glow);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-bar span { font-size: 13px; color: var(--accent); }
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  font-size: 13px;
+  font-family: 'Noto Sans JP', sans-serif;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn:active { transform: scale(0.97); background: var(--bg-elevated); }
+.btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+.btn svg path { fill: var(--text-secondary); }
+.btn-accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.btn-accent:active { background: var(--accent); opacity: 0.85; }
+.btn-accent svg path { fill: #fff; }
+
+.history-section { margin-top: 4px; }
+.history-section h3 {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+}
+.history-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.history-item:active { background: var(--bg-elevated); }
+.history-item-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.history-item-meta span {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.history-item-type {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+.history-item-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.history-item .delete-btn {
+  float: right;
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.toast {
+  position: fixed;
+  bottom: calc(24px + var(--safe-bottom));
+  left: 50%;
+  transform: translateX(-50%) translateY(60px);
+  background: var(--text);
+  color: var(--bg);
+  padding: 10px 20px;
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  z-index: 100;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 24px 0;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>音声メモ</h1>
+    <span class="lang-pill" id="langPill">JA</span>
+  </header>
+
+  <div class="content">
+    <div class="rec-section">
+      <div class="waveform" id="waveform"></div>
+      <button class="mic-btn" id="micBtn" aria-label="録音開始">
+        <svg class="mic-icon" viewBox="0 0 24 24" id="micIcon">
+          <rect x="9" y="2" width="6" height="12" rx="3"/>
+          <path d="M5 10a7 7 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" style="fill:none"/>
+          <path d="M12 19v3M8 22h8" fill="none" stroke="currentColor" stroke-width="2" style="fill:none"/>
+        </svg>
+      </button>
+      <div class="rec-label" id="recLabel">タップして録音</div>
+      <div class="timer" id="timer">00:00</div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" id="tabRaw">文字起こし</button>
+      <button class="tab" id="tabAI">AI整形</button>
+    </div>
+
+    <div class="text-card">
+      <textarea id="mainText" placeholder="録音すると、ここに文字起こしが表示されます"></textarea>
+      <div class="text-meta"><span id="charCount">0文字</span></div>
+    </div>
+
+    <div class="ai-panel" id="aiPanel">
+      <label>変換モード</label>
+      <div class="ai-grid" id="aiGrid">
+        <button class="ai-chip selected" data-mode="clean">読みやすく整える</button>
+        <button class="ai-chip" data-mode="summary">要約する</button>
+        <button class="ai-chip" data-mode="bullet">箇条書き</button>
+        <button class="ai-chip" data-mode="mail">メール文</button>
+        <button class="ai-chip" data-mode="minutes">議事録</button>
+        <button class="ai-chip" data-mode="formal">丁寧な文体</button>
+        <button class="ai-chip" data-mode="casual">カジュアル文体</button>
+        <button class="ai-chip" data-mode="todo">TODO抽出</button>
+      </div>
+    </div>
+
+    <div class="loading-bar" id="loadingBar">
+      <div class="loading-spinner"></div>
+      <span>AIが処理中...</span>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-accent" id="copyBtn">
+        <svg viewBox="0 0 24 24"><path d="M8 4v12a2 2 0 002 2h8a2 2 0 002-2V7.242a2 2 0 00-.602-1.43L16.083 2.57A2 2 0 0014.685 2H10a2 2 0 00-2 2z"/><path d="M16 18v2a2 2 0 01-2 2H6a2 2 0 01-2-2V9a2 2 0 012-2h2" fill="none" stroke="#fff" stroke-width="1.5" style="fill:none"/></svg>
+        コピー
+      </button>
+      <button class="btn" id="saveBtn">
+        <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" fill="none" stroke="currentColor" stroke-width="1.5" style="fill:none"/><path d="M7 3v5h8V3M7 21v-8h10v8" fill="none" stroke="currentColor" stroke-width="1.5" style="fill:none"/></svg>
+        保存
+      </button>
+      <button class="btn" id="clearBtn">
+        <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14" fill="none" stroke="currentColor" stroke-width="1.5" style="fill:none"/></svg>
+        クリア
+      </button>
+    </div>
+
+    <div class="history-section" id="historySection" style="display:none">
+      <h3>保存済み</h3>
+      <div id="historyList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+let isRecording = false, recognition = null, timerInterval = null, seconds = 0, waveInterval = null;
+let currentTab = 'raw', rawText = '', aiText = '', selectedMode = 'clean';
+let history = JSON.parse(localStorage.getItem('voicememo_history') || '[]');
+
+// Wave bars
+const waveEl = $('waveform');
+const BAR_COUNT = 20;
+for (let i = 0; i < BAR_COUNT; i++) {
+  const bar = document.createElement('div');
+  bar.className = 'wave-bar';
+  bar.style.height = (6 + Math.random() * 12) + 'px';
+  waveEl.appendChild(bar);
+}
+const waveBars = waveEl.querySelectorAll('.wave-bar');
+
+if (!SpeechRecognition) {
+  $('recLabel').textContent = 'このブラウザは音声認識未対応です';
+  $('micBtn').style.opacity = '0.4';
+}
+
+function setupRecognition() {
+  recognition = new SpeechRecognition();
+  recognition.lang = 'ja-JP';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  let finalTranscript = rawText;
+  recognition.onresult = (e) => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) finalTranscript += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    rawText = finalTranscript;
+    if (currentTab === 'raw') {
+      $('mainText').value = finalTranscript + interim;
+      updateCharCount();
+    }
+  };
+
+  recognition.onerror = (e) => {
+    if (e.error !== 'aborted' && e.error !== 'no-speech') {
+      showToast('エラー: ' + e.error);
+      stopRecording();
+    }
+  };
+  recognition.onend = () => { if (isRecording) try { recognition.start(); } catch(e) {} };
+}
+
+$('micBtn').addEventListener('click', () => {
+  if (!SpeechRecognition) return;
+  isRecording ? stopRecording() : startRecording();
+});
+
+function startRecording() {
+  isRecording = true;
+  $('micBtn').classList.add('recording');
+  $('micIcon').innerHTML = '<rect x="7" y="7" width="10" height="10" rx="2"/>';
+  $('recLabel').textContent = '録音中...';
+  $('recLabel').classList.add('active');
+
+  seconds = 0;
+  timerInterval = setInterval(() => {
+    seconds++;
+    $('timer').textContent = String(Math.floor(seconds / 60)).padStart(2, '0') + ':' + String(seconds % 60).padStart(2, '0');
+  }, 1000);
+
+  waveInterval = setInterval(() => {
+    waveBars.forEach(b => {
+      b.style.height = (4 + Math.random() * 28) + 'px';
+      b.classList.add('active');
+    });
+  }, 100);
+
+  setupRecognition();
+  recognition.start();
+}
+
+function stopRecording() {
+  isRecording = false;
+  $('micBtn').classList.remove('recording');
+  $('micIcon').innerHTML = '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0" fill="none" stroke="currentColor" stroke-width="2" style="fill:none"/><path d="M12 19v3M8 22h8" fill="none" stroke="currentColor" stroke-width="2" style="fill:none"/>';
+  $('recLabel').textContent = 'タップして録音';
+  $('recLabel').classList.remove('active');
+
+  clearInterval(timerInterval);
+  clearInterval(waveInterval);
+  waveBars.forEach(b => { b.style.height = (6 + Math.random() * 12) + 'px'; b.classList.remove('active'); });
+
+  if (recognition) try { recognition.stop(); } catch(e) {}
+}
+
+// Tabs
+$('tabRaw').addEventListener('click', () => switchTab('raw'));
+$('tabAI').addEventListener('click', () => switchTab('ai'));
+
+function switchTab(tab) {
+  currentTab = tab;
+  $('tabRaw').classList.toggle('active', tab === 'raw');
+  $('tabAI').classList.toggle('active', tab === 'ai');
+  $('aiPanel').classList.toggle('visible', tab === 'ai');
+  $('mainText').value = tab === 'raw' ? rawText : aiText;
+  $('mainText').placeholder = tab === 'raw' ? '録音すると、ここに文字起こしが表示されます' : '変換モードを選んでタップしてください';
+  updateCharCount();
+}
+
+// AI chips
+$('aiGrid').addEventListener('click', (e) => {
+  const chip = e.target.closest('.ai-chip');
+  if (!chip) return;
+  document.querySelectorAll('.ai-chip').forEach(c => c.classList.remove('selected'));
+  chip.classList.add('selected');
+  selectedMode = chip.dataset.mode;
+  runAI();
+});
+
+async function runAI() {
+  const text = rawText.trim();
+  if (!text) { showToast('先に録音してください'); return; }
+
+  const prompts = {
+    clean: `以下の音声文字起こしを、句読点を補い読みやすく整えてください。意味は変えず、自然な日本語にしてください。\n\n${text}`,
+    summary: `以下の音声文字起こしを3〜5文で簡潔に要約してください。\n\n${text}`,
+    bullet: `以下の音声文字起こしの要点を箇条書きで整理してください。\n\n${text}`,
+    mail: `以下の音声メモを元に、自然なビジネスメール（件名と本文）を作成してください。\n\n${text}`,
+    minutes: `以下の音声文字起こしを議事録形式（日時・参加者・議題・決定事項・TODO）で整理してください。不明な項目は「要確認」としてください。\n\n${text}`,
+    formal: `以下の文章を丁寧な敬語・ビジネス文体に書き直してください。\n\n${text}`,
+    casual: `以下の文章をカジュアルで親しみやすい文体に書き直してください。\n\n${text}`,
+    todo: `以下の音声文字起こしからTODO・やるべきことを抽出し、優先度付きのリストにしてください。\n\n${text}`,
+  };
+
+  $('loadingBar').classList.add('visible');
+  $('mainText').value = '';
+
+  try {
+    const res = await fetch('/.netlify/functions/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: prompts[selectedMode] })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    aiText = data.text || 'エラーが発生しました';
+  } catch(e) {
+    aiText = '通信エラー: ' + e.message;
+  }
+
+  $('loadingBar').classList.remove('visible');
+  $('mainText').value = aiText;
+  updateCharCount();
+}
+
+$('mainText').addEventListener('input', () => {
+  if (currentTab === 'raw') rawText = $('mainText').value;
+  else aiText = $('mainText').value;
+  updateCharCount();
+});
+
+function updateCharCount() {
+  $('charCount').textContent = $('mainText').value.length + '文字';
+}
+
+// Actions
+$('copyBtn').addEventListener('click', () => {
+  const text = $('mainText').value;
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => showToast('コピーしました'));
+});
+
+$('clearBtn').addEventListener('click', () => {
+  rawText = ''; aiText = '';
+  $('mainText').value = '';
+  $('timer').textContent = '00:00';
+  seconds = 0;
+  updateCharCount();
+  showToast('クリアしました');
+});
+
+$('saveBtn').addEventListener('click', () => {
+  const text = $('mainText').value.trim();
+  if (!text) return;
+  const item = {
+    text,
+    time: new Date().toLocaleString('ja-JP', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }),
+    type: currentTab === 'ai' ? 'AI整形' : '文字起こし',
+    id: Date.now()
+  };
+  history.unshift(item);
+  if (history.length > 50) history = history.slice(0, 50);
+  localStorage.setItem('voicememo_history', JSON.stringify(history));
+  renderHistory();
+  showToast('保存しました');
+});
+
+function renderHistory() {
+  $('historySection').style.display = history.length ? 'block' : 'none';
+  $('historyList').innerHTML = history.map((item, i) => `
+    <div class="history-item" onclick="loadHistory(${i})">
+      <div class="history-item-meta">
+        <span>${item.time}</span>
+        <span class="history-item-type">${item.type}</span>
+      </div>
+      <div class="history-item-text">${escapeHtml(item.text)}</div>
+    </div>
+  `).join('');
+}
+
+function loadHistory(i) {
+  const item = history[i];
+  $('mainText').value = item.text;
+  if (item.type === 'AI整形') { aiText = item.text; switchTab('ai'); }
+  else { rawText = item.text; switchTab('raw'); }
+  updateCharCount();
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showToast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+renderHistory();
+
+// Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
