@@ -10,11 +10,22 @@ export default async (req) => {
   }
 
   try {
-    const { prompt } = await req.json();
+    const body = await req.json();
+    const prompt = body.prompt;
     const API_KEY = process.env.ANTHROPIC_API_KEY;
 
     if (!API_KEY) {
-      return Response.json({ error: 'API key not configured' }, { status: 500 });
+      return Response.json({ error: 'APIキーが設定されていません。Netlifyの環境変数を確認してください。' }, {
+        status: 500,
+        headers: { 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+
+    if (!prompt) {
+      return Response.json({ error: 'テキストが空です' }, {
+        status: 400,
+        headers: { 'Access-Control-Allow-Origin': '*' },
+      });
     }
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -32,13 +43,27 @@ export default async (req) => {
     });
 
     const data = await res.json();
-    const text = data.content?.[0]?.text || 'エラーが発生しました';
+
+    if (!res.ok) {
+      return Response.json({ error: 'API error: ' + (data.error?.message || JSON.stringify(data)) }, {
+        status: res.status,
+        headers: { 'Access-Control-Allow-Origin': '*' },
+      });
+    }
+
+    const text = data.content?.[0]?.text;
+    if (!text) {
+      return Response.json({ error: 'APIレスポンスが空です: ' + JSON.stringify(data) }, {
+        status: 500,
+        headers: { 'Access-Control-Allow-Origin': '*' },
+      });
+    }
 
     return Response.json({ text }, {
       headers: { 'Access-Control-Allow-Origin': '*' },
     });
   } catch (e) {
-    return Response.json({ error: e.message }, {
+    return Response.json({ error: '通信エラー: ' + e.message }, {
       status: 500,
       headers: { 'Access-Control-Allow-Origin': '*' },
     });
